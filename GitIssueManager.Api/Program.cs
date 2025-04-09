@@ -20,7 +20,12 @@ namespace GitIssueManager.Api
                 .AddEnvironmentVariables()
                 .AddUserSecrets<Program>(optional: true);
 
-            builder.Services.AddLogging();
+            builder.Services.AddLogging(logging =>
+            {
+                logging.ClearProviders();
+                logging.AddConsole();
+                logging.AddDebug();
+            });
 
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
@@ -77,6 +82,7 @@ namespace GitIssueManager.Api
             // API Endpoints
             app.MapGet("/", () => Results.Redirect("/index.html")).ExcludeFromDescription();
 
+            // Get issues for a repository with simple pagination
             app.MapGet("/api/services/{service}/repos/{repositoryOwner}/{repositoryName}/issues", async (
                 string service,
                 string repositoryOwner,
@@ -89,16 +95,24 @@ namespace GitIssueManager.Api
                 try
                 {
                     if (string.IsNullOrWhiteSpace(repositoryOwner) || string.IsNullOrWhiteSpace(repositoryName))
-                    {
                         return Results.BadRequest(new { error = "Repository owner and name are required" });
-                    }
-
+                    
                     var client = factory.CreateClient(service);
 
-                    logger.LogInformation("Fetching issues for {Service} repo {Owner}/{Repo}",
-                        service, repositoryOwner, repositoryName);
+                    logger.LogInformation("Fetching issues for {Service} repo {Owner}/{Repo}", service, repositoryOwner, repositoryName);
+
+                    // Ensure valid pagination parameters
+                    page = Math.Max(1, page); // Page can't be less than 1
+                    per_page = Math.Clamp(per_page, 1, 100); // Limit per_page between 1 and 100
 
                     var issues = await client.GetIssuesAsync(repositoryOwner, repositoryName, page, per_page);
+
+                    if (issues == null || issues.Count == 0)
+                    {
+                        logger.LogInformation("No issues found for {Service} repo {Owner}/{Repo}", service, repositoryOwner, repositoryName);
+                        return Results.NotFound(new { error = "No issues found" });
+                    }
+
                     return Results.Ok(issues);
                 }
                 catch (ArgumentException ex)
@@ -126,8 +140,7 @@ namespace GitIssueManager.Api
             .WithName("GetIssues")
             .WithOpenApi();
 
-
-            // Get a specific issue - improved
+            // Get a specific issue
             app.MapGet("/api/services/{service}/repos/{repositoryOwner}/{repositoryName}/issues/{issueNumber}", async (
                 string service,
                 string repositoryOwner,
@@ -138,25 +151,20 @@ namespace GitIssueManager.Api
             {
                 try
                 {
-                    // Validate inputs
                     if (string.IsNullOrWhiteSpace(repositoryOwner) || string.IsNullOrWhiteSpace(repositoryName))
-                    {
                         return Results.BadRequest(new { error = "Repository owner and name are required" });
-                    }
 
                     if (string.IsNullOrWhiteSpace(issueNumber))
-                    {
                         return Results.BadRequest(new { error = "Issue number is required" });
-                    }
 
-                    logger.LogInformation("Fetching issue {IssueNumber} from {Service} repo {Owner}/{Repo}",
-                        issueNumber, service, repositoryOwner, repositoryName);
+                    logger.LogInformation("Fetching issue {IssueNumber} from {Service} repo {Owner}/{Repo}", issueNumber, service, repositoryOwner, repositoryName);
 
                     var client = factory.CreateClient(service);
                     var issue = await client.GetIssueAsync(repositoryOwner, repositoryName, issueNumber);
 
                     if (issue == null)
                     {
+                        logger.LogInformation("Issue {IssueNumber} not found in {Service} repo {Owner}/{Repo}", issueNumber, service, repositoryOwner, repositoryName);
                         return Results.NotFound(new { error = $"Issue {issueNumber} not found" });
                     }
 
@@ -187,7 +195,7 @@ namespace GitIssueManager.Api
             .WithName("GetIssue")
             .WithOpenApi();
 
-            // Create a new issue - improved
+            // Create a new issue
             app.MapPost("/api/services/{service}/repos/{repositoryOwner}/{repositoryName}/issues", async (
                 string service,
                 string repositoryOwner,
@@ -198,30 +206,27 @@ namespace GitIssueManager.Api
             {
                 try
                 {
-                    // Validate inputs
                     if (string.IsNullOrWhiteSpace(repositoryOwner) || string.IsNullOrWhiteSpace(repositoryName))
-                    {
                         return Results.BadRequest(new { error = "Repository owner and name are required" });
-                    }
 
                     if (request == null)
-                    {
                         return Results.BadRequest(new { error = "Issue request body is required" });
-                    }
 
                     if (string.IsNullOrWhiteSpace(request.Title))
-                    {
                         return Results.BadRequest(new { error = "Issue title is required" });
-                    }
 
-                    logger.LogInformation("Creating new issue in {Service} repo {Owner}/{Repo}",
-                        service, repositoryOwner, repositoryName);
+                    logger.LogInformation("Creating new issue in {Service} repo {Owner}/{Repo}", service, repositoryOwner, repositoryName);
 
                     var client = factory.CreateClient(service);
                     var issue = await client.CreateIssueAsync(repositoryOwner, repositoryName, request);
 
-                    logger.LogInformation("Successfully created issue {IssueId} in {Service} repo {Owner}/{Repo}",
-                        issue.Id, service, repositoryOwner, repositoryName);
+                    if (issue == null)
+                    {
+                        logger.LogInformation("Failed to create issue in {Service} repo {Owner}/{Repo}", service, repositoryOwner, repositoryName);
+                        return Results.Problem("Failed to create issue");
+                    }
+
+                    logger.LogInformation("Successfully created issue {IssueId} in {Service} repo {Owner}/{Repo}", issue.Id, service, repositoryOwner, repositoryName);
 
                     return Results.Created($"/api/services/{service}/repos/{repositoryOwner}/{repositoryName}/issues/{issue.Id}", issue);
                 }
@@ -250,7 +255,7 @@ namespace GitIssueManager.Api
             .WithName("CreateIssue")
             .WithOpenApi();
 
-            // Update an issue - improved
+            // Update an issue
             app.MapPut("/api/services/{service}/repos/{repositoryOwner}/{repositoryName}/issues/{issueNumber}", async (
                 string service,
                 string repositoryOwner,
@@ -258,39 +263,29 @@ namespace GitIssueManager.Api
                 string issueNumber,
                 [FromBody] IssueRequest request,
                 GitServiceFactory factory,
-                ILogger<Program> logger) =>
+                    ILogger<Program> logger) =>
             {
                 try
                 {
                     // Validate inputs
                     if (string.IsNullOrWhiteSpace(repositoryOwner) || string.IsNullOrWhiteSpace(repositoryName))
-                    {
                         return Results.BadRequest(new { error = "Repository owner and name are required" });
-                    }
 
                     if (string.IsNullOrWhiteSpace(issueNumber))
-                    {
                         return Results.BadRequest(new { error = "Issue number is required" });
-                    }
 
                     if (request == null)
-                    {
                         return Results.BadRequest(new { error = "Issue request body is required" });
-                    }
 
                     if (string.IsNullOrWhiteSpace(request.Title))
-                    {
                         return Results.BadRequest(new { error = "Issue title is required" });
-                    }
 
-                    logger.LogInformation("Updating issue {IssueNumber} in {Service} repo {Owner}/{Repo}",
-                        issueNumber, service, repositoryOwner, repositoryName);
+                    logger.LogInformation("Updating issue {IssueNumber} in {Service} repo {Owner}/{Repo}", issueNumber, service, repositoryOwner, repositoryName);
 
                     var client = factory.CreateClient(service);
                     var issue = await client.UpdateIssueAsync(repositoryOwner, repositoryName, issueNumber, request);
 
-                    logger.LogInformation("Successfully updated issue {IssueId} in {Service} repo {Owner}/{Repo}",
-                        issue.Id, service, repositoryOwner, repositoryName);
+                    logger.LogInformation("Successfully updated issue {IssueId} in {Service} repo {Owner}/{Repo}", issue.Id, service, repositoryOwner, repositoryName);
 
                     return Results.Ok(issue);
                 }
@@ -319,7 +314,7 @@ namespace GitIssueManager.Api
             .WithName("UpdateIssue")
             .WithOpenApi();
 
-            // Close an issue - improved
+            // Close an issue
             app.MapPost("/api/services/{service}/repos/{repositoryOwner}/{repositoryName}/issues/{issueNumber}/close", async (
                 string service,
                 string repositoryOwner,
@@ -332,23 +327,17 @@ namespace GitIssueManager.Api
                 {
                     // Validate inputs
                     if (string.IsNullOrWhiteSpace(repositoryOwner) || string.IsNullOrWhiteSpace(repositoryName))
-                    {
                         return Results.BadRequest(new { error = "Repository owner and name are required" });
-                    }
 
                     if (string.IsNullOrWhiteSpace(issueNumber))
-                    {
                         return Results.BadRequest(new { error = "Issue number is required" });
-                    }
 
-                    logger.LogInformation("Closing issue {IssueNumber} in {Service} repo {Owner}/{Repo}",
-                        issueNumber, service, repositoryOwner, repositoryName);
+                    logger.LogInformation("Closing issue {IssueNumber} in {Service} repo {Owner}/{Repo}", issueNumber, service, repositoryOwner, repositoryName);
 
                     var client = factory.CreateClient(service);
                     var issue = await client.CloseIssueAsync(repositoryOwner, repositoryName, issueNumber);
 
-                    logger.LogInformation("Successfully closed issue {IssueId} in {Service} repo {Owner}/{Repo}",
-                        issue.Id, service, repositoryOwner, repositoryName);
+                    logger.LogInformation("Successfully closed issue {IssueId} in {Service} repo {Owner}/{Repo}", issue.Id, service, repositoryOwner, repositoryName);
 
                     return Results.Ok(issue);
                 }
@@ -377,7 +366,7 @@ namespace GitIssueManager.Api
             .WithName("CloseIssue")
             .WithOpenApi();
 
-            // Validate credentials - improved
+            // Validate credentials
             app.MapGet("/api/services/{service}/validate", async (
                 string service,
                 GitServiceFactory factory,
@@ -385,11 +374,8 @@ namespace GitIssueManager.Api
             {
                 try
                 {
-                    // Validate inputs
                     if (string.IsNullOrWhiteSpace(service))
-                    {
                         return Results.BadRequest(new { error = "Service type is required" });
-                    }
 
                     logger.LogInformation("Validating credentials for {Service}", service);
 
@@ -424,6 +410,8 @@ namespace GitIssueManager.Api
             })
             .WithName("ValidateCredentials")
             .WithOpenApi();
+
+            app.Run();
         }
     }
 }
