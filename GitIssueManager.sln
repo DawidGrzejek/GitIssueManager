@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GitIssueManager.Core", "Git
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GitIssueManager.Api", "GitIssueManager.Api\GitIssueManager.Api.csproj", "{5F5EEA1F-A2DC-42A7-B2BC-006CBC5217E9}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GitIssueManager.Tests", "GitIssueManager.Tests\GitIssueManager.Tests.csproj", "{4BEBF326-906C-4FEB-A0BD-C03500C5D205}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{5F5EEA1F-A2DC-42A7-B2BC-006CBC5217E9}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5F5EEA1F-A2DC-42A7-B2BC-006CBC5217E9}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5F5EEA1F-A2DC-42A7-B2BC-006CBC5217E9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4BEBF326-906C-4FEB-A0BD-C03500C5D205}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4BEBF326-906C-4FEB-A0BD-C03500C5D205}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4BEBF326-906C-4FEB-A0BD-C03500C5D205}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4BEBF326-906C-4FEB-A0BD-C03500C5D205}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -4,8 +4,11 @@ using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http.Headers;
+using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using GitIssueManager.Core.Services;
 
 namespace GitIssueManager.Core.Factories
 {
@@ -19,15 +22,51 @@ namespace GitIssueManager.Core.Factories
         /// <param name="services">The service collection.</param>
         public static void AddGitServices(this IServiceCollection services)
         {
+            // Register HttpClient
+            services.AddHttpClient();
+
             // Register concrete type
             services.AddSingleton<GitServiceFactory>(provider =>
             {
                 var configuration = provider.GetRequiredService<IConfiguration>();
-                var factory = new GitServiceFactory(configuration);
+                var httpClientFactory = provider.GetRequiredService<IHttpClientFactory>();
+                var factory = new GitServiceFactory(configuration, httpClientFactory);
 
                 // Register known Git service clients
-                factory.RegisterClientFactory("github", config => new Services.GitHubClient(config["GitHub:ApiToken"]));
-                factory.RegisterClientFactory("gitlab", config => new Services.GitLabClient(config["GitLab:ApiToken"]));
+                factory.RegisterClientFactory("github", (config, httpFactory) =>
+                {
+                    var client = httpFactory.CreateClient("GitHub");
+
+                    // Set up HTTP client with required headers
+                    client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
+                    client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("GitIssueManager", "1.0"));
+
+                    var apiToken = config["GitHub:ApiToken"];
+
+                    if (!string.IsNullOrEmpty(apiToken))
+                    {
+                        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", apiToken);
+                    }
+
+                    return new GitHubClient(client, apiToken);
+                });
+
+
+                factory.RegisterClientFactory("gitlab", (config, httpFactory) =>
+                {
+                    var client = httpFactory.CreateClient("GitLab");
+
+                    // Set up HTTP client with required headers
+                    client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+                    var apiToken = config["GitLab:ApiToken"];
+                    if (!string.IsNullOrEmpty(apiToken))
+                    {
+                        client.DefaultRequestHeaders.Add("PRIVATE-TOKEN", apiToken);
+                    }
+
+                    return new GitLabClient(client, apiToken);
+                });
 
                 return factory;
             });

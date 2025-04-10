@@ -16,12 +16,14 @@ namespace GitIssueManager.Core.Factories
     public class GitServiceFactory : IGitServiceFactory
     {
         private readonly IConfiguration _configuration;
-        private readonly Dictionary<string, Func<IConfiguration, IGitServiceClient>> _clientFactories;
+        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly Dictionary<string, Func<IConfiguration, IHttpClientFactory, IGitServiceClient>> _clientFactories;
 
-        public GitServiceFactory(IConfiguration configuration)
+        public GitServiceFactory(IConfiguration configuration, IHttpClientFactory httpClientFactory)
         {
             _configuration = configuration;
-            _clientFactories = new Dictionary<string, Func<IConfiguration, IGitServiceClient>>(StringComparer.OrdinalIgnoreCase);
+            _httpClientFactory = httpClientFactory;
+            _clientFactories = new Dictionary<string, Func<IConfiguration, IHttpClientFactory, IGitServiceClient>>(StringComparer.OrdinalIgnoreCase);
         }
 
         /// <summary>
@@ -30,7 +32,7 @@ namespace GitIssueManager.Core.Factories
         /// <param name="serviceType"></param>
         /// <param name="factory"></param>
         /// <exception cref="ArgumentNullException"></exception>
-        public void RegisterClientFactory(string serviceType, Func<IConfiguration, IGitServiceClient> factory)
+        public void RegisterClientFactory(string serviceType, Func<IConfiguration, IHttpClientFactory, IGitServiceClient> factory)
         {
             if (string.IsNullOrEmpty(serviceType))
             {
@@ -56,7 +58,7 @@ namespace GitIssueManager.Core.Factories
 
             if (_clientFactories.TryGetValue(serviceType, out var factory))
             {
-                return factory(_configuration);
+                return factory(_configuration, _httpClientFactory);
             }
 
             throw new ArgumentException($"Unsupported Git service: {serviceType}");

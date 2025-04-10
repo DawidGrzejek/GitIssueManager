@@ -20,18 +20,10 @@ namespace GitIssueManager.Core.Services
 
         public string ServiceType => "GitLab";
 
-        public GitLabClient(string apiToken)
+        public GitLabClient(HttpClient httpClient, string apiToken)
         {
+            _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
             _apiToken = apiToken ?? throw new ArgumentNullException(nameof(apiToken));
-            _httpClient = new HttpClient();
-
-            // Set up HTTP client with required headers
-            _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-
-            if (!string.IsNullOrEmpty(_apiToken))
-            {
-                _httpClient.DefaultRequestHeaders.Add("PRIVATE-TOKEN", _apiToken);
-            }
         }
 
         /// <inheritdoc>/>

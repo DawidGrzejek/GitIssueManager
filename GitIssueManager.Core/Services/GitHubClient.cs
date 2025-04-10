@@ -19,19 +19,10 @@ namespace GitIssueManager.Core.Services
 
         public string ServiceType => "GitHub";
 
-        public GitHubClient(string apiToken)
+        public GitHubClient(HttpClient httpClient, string apiToken)
         {
+            _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
             _apiToken = apiToken ?? throw new ArgumentNullException(nameof(apiToken));
-            _httpClient = new HttpClient();
-
-            // Set up HTTP client with required headers
-            _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
-            _httpClient.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("GitIssueManager", "1.0"));
-
-            if (!string.IsNullOrEmpty(_apiToken))
-            {
-                _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _apiToken);
-            }
         }
 
         /// <inheritdoc/>
