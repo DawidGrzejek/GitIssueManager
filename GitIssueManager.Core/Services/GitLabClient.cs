@@ -16,6 +16,7 @@ namespace GitIssueManager.Core.Services
         private readonly HttpClient _httpClient;
         private readonly string _apiToken;
         private const string BaseUrl = "https://gitlab.com/api/v4";
+        private static readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
 
         public string ServiceType => "GitLab";
 
@@ -33,6 +34,7 @@ namespace GitIssueManager.Core.Services
             }
         }
 
+        /// <inheritdoc>/>
         public async Task<List<Issue>> GetIssuesAsync(string owner, string repository, int page = 1, int perPage = 30)
         {
             // In GitLab, we need the project ID which is usually owner/repository in URL-encoded form
@@ -50,7 +52,7 @@ namespace GitIssueManager.Core.Services
             response.EnsureSuccessStatusCode();
 
             var content = await response.Content.ReadAsStringAsync();
-            var issues = JsonSerializer.Deserialize<List<JsonElement>>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            var issues = JsonSerializer.Deserialize<List<JsonElement>>(content, _jsonOptions);
 
             var result = new List<Issue>();
             foreach (var issue in issues)
@@ -75,18 +77,30 @@ namespace GitIssueManager.Core.Services
             return result;
         }
 
-        // Map GitLab state to generic state format
-        private string MapGitLabStateToGenericState(string gitlabState)
+        /// <summary>
+        /// Maps GitLab issue states to a generic state representation.
+        /// </summary>
+        /// <param name="gitlabState">The state of the issue in GitLab (e.g., "opened", "closed").</param>
+        /// <returns>A string representing the generic state (e.g., "open", "closed").</returns>
+        private static string MapGitLabStateToGenericState(string gitlabState)
         {
-            return gitlabState?.ToLower() switch
+            // Use a dictionary for better extensibility and performance
+            var stateMapping = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
-                "opened" => "open",
-                "closed" => "closed",
-                _ => gitlabState // Keep the original for any other values
+                { "opened", "open" },
+                { "closed", "closed" }
             };
+
+            // Return the mapped value or the original state if not found
+            return stateMapping.TryGetValue(gitlabState, out var genericState) ? genericState : gitlabState;
         }
 
-        private string GetAuthorName(JsonElement issue)
+        /// <summary>
+        /// Gets the author name from the issue JSON element.
+        /// </summary>
+        /// <param name="issue">The JSON element representing the issue.</param>
+        /// <returns>The name of the author if available; otherwise, "Unknown".</returns>
+        private static string GetAuthorName(JsonElement issue)
         {
             if (issue.TryGetProperty("author", out JsonElement author))
             {
@@ -106,7 +120,13 @@ namespace GitIssueManager.Core.Services
             return "Unknown";
         }
 
-        private DateTime? GetDateTime(JsonElement element, string propertyName)
+        /// <summary>
+        /// Gets a DateTime value from the JSON element.
+        /// </summary>
+        /// <param name="element">The JSON element containing the property.</param>
+        /// <param name="propertyName">The name of the property to retrieve.</param>
+        /// <returns>The DateTime value if successfully parsed; otherwise, null.</returns>
+        private static DateTime? GetDateTime(JsonElement element, string propertyName)
         {
             if (element.TryGetProperty(propertyName, out JsonElement property) &&
                 property.ValueKind != JsonValueKind.Null)
@@ -119,6 +139,7 @@ namespace GitIssueManager.Core.Services
             return null;
         }
 
+        /// <inheritdoc>/>
         public async Task<Issue> GetIssueAsync(string owner, string repository, string issueNumber)
         {
             string projectId = HttpUtility.UrlEncode($"{owner}/{repository}");
@@ -127,7 +148,7 @@ namespace GitIssueManager.Core.Services
             response.EnsureSuccessStatusCode();
 
             var content = await response.Content.ReadAsStringAsync();
-            var issue = JsonSerializer.Deserialize<JsonElement>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            var issue = JsonSerializer.Deserialize<JsonElement>(content, _jsonOptions);
 
             return new Issue
             {
@@ -146,6 +167,7 @@ namespace GitIssueManager.Core.Services
             };
         }
 
+        /// <inheritdoc>/>
         public async Task<Issue> CreateIssueAsync(string owner, string repository, IssueRequest request)
         {
             string projectId = HttpUtility.UrlEncode($"{owner}/{repository}");
@@ -163,7 +185,7 @@ namespace GitIssueManager.Core.Services
             response.EnsureSuccessStatusCode();
 
             var responseContent = await response.Content.ReadAsStringAsync();
-            var createdIssue = JsonSerializer.Deserialize<JsonElement>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            var createdIssue = JsonSerializer.Deserialize<JsonElement>(responseContent, _jsonOptions);
 
             return new Issue
             {
@@ -182,6 +204,7 @@ namespace GitIssueManager.Core.Services
             };
         }
 
+        /// <inheritdoc>/>
         public async Task<Issue> UpdateIssueAsync(string owner, string repository, string issueNumber, IssueRequest request)
         {
             string projectId = HttpUtility.UrlEncode($"{owner}/{repository}");
@@ -199,7 +222,7 @@ namespace GitIssueManager.Core.Services
             response.EnsureSuccessStatusCode();
 
             var responseContent = await response.Content.ReadAsStringAsync();
-            var updatedIssue = JsonSerializer.Deserialize<JsonElement>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            var updatedIssue = JsonSerializer.Deserialize<JsonElement>(responseContent, _jsonOptions);
 
             return new Issue
             {
@@ -218,6 +241,7 @@ namespace GitIssueManager.Core.Services
             };
         }
 
+        /// <inheritdoc>/>
         public async Task<Issue> CloseIssueAsync(string owner, string repository, string issueNumber)
         {
             string projectId = HttpUtility.UrlEncode($"{owner}/{repository}");
@@ -235,7 +259,7 @@ namespace GitIssueManager.Core.Services
             response.EnsureSuccessStatusCode();
 
             var responseContent = await response.Content.ReadAsStringAsync();
-            var closedIssue = JsonSerializer.Deserialize<JsonElement>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            var closedIssue = JsonSerializer.Deserialize<JsonElement>(responseContent, _jsonOptions);
 
             return new Issue
             {
@@ -254,6 +278,7 @@ namespace GitIssueManager.Core.Services
             };
         }
 
+        /// <inheritdoc>/>
         public async Task<bool> ValidateCredentialsAsync()
         {
             try

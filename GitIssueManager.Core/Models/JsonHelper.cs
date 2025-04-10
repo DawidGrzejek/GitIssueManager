@@ -6,8 +6,13 @@ namespace GitIssueManager.Core.Models
     public static class JsonHelper
     {
         /// <summary>
-        /// Safely extracts a string property from a JsonElement, with a default value if not found or null
+        /// Safely extracts a string property from a <see cref="JsonElement"/>.
+        /// Returns a default value if the property is not found or is null.
         /// </summary>
+        /// <param name="element">The <see cref="JsonElement"/> to extract the property from.</param>
+        /// <param name="propertyName">The name of the property to extract.</param>
+        /// <param name="defaultValue">The default value to return if the property is not found or is null.</param>
+        /// <returns>The extracted string value, or the default value if not found or null.</returns>
         public static string GetStringOrDefault(this JsonElement element, string propertyName, string defaultValue = "")
         {
             if (element.TryGetProperty(propertyName, out JsonElement property) &&
@@ -27,8 +32,13 @@ namespace GitIssueManager.Core.Models
         }
 
         /// <summary>
-        /// Safely extracts an integer property from a JsonElement, with a default value if not found or null
+        /// Safely extracts an integer property from a <see cref="JsonElement"/>.
+        /// Returns a default value if the property is not found, null, or cannot be parsed as an integer.
         /// </summary>
+        /// <param name="element">The <see cref="JsonElement"/> to extract the property from.</param>
+        /// <param name="propertyName">The name of the property to extract.</param>
+        /// <param name="defaultValue">The default value to return if the property is not found, null, or invalid.</param>
+        /// <returns>The extracted integer value, or the default value if not found, null, or invalid.</returns>
         public static int GetIntOrDefault(this JsonElement element, string propertyName, int defaultValue = 0)
         {
             if (element.TryGetProperty(propertyName, out JsonElement property) &&
@@ -48,8 +58,13 @@ namespace GitIssueManager.Core.Models
         }
 
         /// <summary>
-        /// Safely extracts a boolean property from a JsonElement, with a default value if not found or null
+        /// Safely extracts a boolean property from a <see cref="JsonElement"/>.
+        /// Returns a default value if the property is not found, null, or cannot be parsed as a boolean.
         /// </summary>
+        /// <param name="element">The <see cref="JsonElement"/> to extract the property from.</param>
+        /// <param name="propertyName">The name of the property to extract.</param>
+        /// <param name="defaultValue">The default value to return if the property is not found, null, or invalid.</param>
+        /// <returns>The extracted boolean value, or the default value if not found, null, or invalid.</returns>
         public static bool GetBoolOrDefault(this JsonElement element, string propertyName, bool defaultValue = false)
         {
             if (element.TryGetProperty(propertyName, out JsonElement property) &&
@@ -73,8 +88,13 @@ namespace GitIssueManager.Core.Models
         }
 
         /// <summary>
-        /// Safely extracts a DateTime property from a JsonElement, with a default value if not found or null
+        /// Safely extracts a <see cref="DateTime"/> property from a <see cref="JsonElement"/>.
+        /// Returns a default value if the property is not found, null, or cannot be parsed as a <see cref="DateTime"/>.
         /// </summary>
+        /// <param name="element">The <see cref="JsonElement"/> to extract the property from.</param>
+        /// <param name="propertyName">The name of the property to extract.</param>
+        /// <param name="defaultValue">The default value to return if the property is not found, null, or invalid.</param>
+        /// <returns>The extracted <see cref="DateTime"/> value, or the default value if not found, null, or invalid.</returns>
         public static DateTime? GetDateTimeOrDefault(this JsonElement element, string propertyName, DateTime? defaultValue = null)
         {
             if (element.TryGetProperty(propertyName, out JsonElement property) &&
@@ -89,8 +109,13 @@ namespace GitIssueManager.Core.Models
         }
 
         /// <summary>
-        /// Safely extracts a string property from a nested JsonElement path
+        /// Safely extracts a string property from a nested path within a <see cref="JsonElement"/>.
+        /// Returns a default value if any part of the path is not found or null.
         /// </summary>
+        /// <param name="element">The <see cref="JsonElement"/> to extract the property from.</param>
+        /// <param name="propertyPath">An array of property names representing the nested path.</param>
+        /// <param name="defaultValue">The default value to return if the property is not found or null.</param>
+        /// <returns>The extracted string value, or the default value if not found or null.</returns>
         public static string GetNestedStringOrDefault(this JsonElement element, string[] propertyPath, string defaultValue = "")
         {
             JsonElement current = element;
